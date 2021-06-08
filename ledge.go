@@ -26,6 +26,9 @@ var globalStats = *abool.NewBool(true)
 
 func New(prefixComponents ...string) *Ledge {
 	prefix := fmt.Sprintf("[%s] ", strings.Join(prefixComponents, " "))
+	if len(prefixComponents) == 0 {
+		prefix = ""
+	}
 	return &Ledge{
 		records:     make(map[string][]float64),
 		recordsLock: &sync.RWMutex{},
