@@ -68,12 +68,6 @@ func main() {
 	log.Stats("tag1")
 	log.ClearRecords("tag1")
 	fmt.Println("Should see just count 0:")
-	// None of these will get recorded since they are below threshold
-	for i := 0; i < 50; i++ {
-		log.RecordAbove("tag1", 10*time.Millisecond, func() {
-			time.Sleep(5 * time.Millisecond)
-		})
-	}
 	// This will only print a count of zero
 	log.Stats("tag1")
 	fmt.Println("Should see just panic:")
