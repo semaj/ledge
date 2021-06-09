@@ -88,7 +88,13 @@ func (l *Ledge) Panic(format string, v ...interface{}) {
 	l.logger.Panicln(s)
 }
 
-func (l *Ledge) Check(err error, format string, v ...interface{}) {
+func (l *Ledge) Check(err error) {
+	if err != nil {
+		l.Panic(fmt.Sprintf("%v", err))
+	}
+}
+
+func (l *Ledge) CheckPrint(err error, format string, v ...interface{}) {
 	if err != nil {
 		l.Panic(format, v...)
 	}
