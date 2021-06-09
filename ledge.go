@@ -121,7 +121,7 @@ func (l *Ledge) MeasureAbove(tag string, above time.Duration, f func()) {
 		f()
 		elapsed := time.Since(t0)
 		if elapsed > above {
-			tagString := fmt.Sprintf("[%s MEASURE]", tag)
+			tagString := fmt.Sprintf("[%s MEASURE-ABOVE]", tag)
 			s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
 			l.logger.Println(s)
 		}
@@ -151,6 +151,44 @@ func (l *Ledge) RecordAbove(tag string, above time.Duration, f func()) {
 		l.recordsLock.Lock()
 		defer l.recordsLock.Unlock()
 		if elapsed > above {
+			if stats, ok := l.records[tag]; ok {
+				l.records[tag] = append(stats, toMillis(elapsed))
+			} else {
+				l.records[tag] = []float64{toMillis(elapsed)}
+			}
+		}
+	}
+}
+
+func (l *Ledge) MeasureRecord(tag string, f func()) {
+	if l.stats.IsSet() && globalStats.IsSet() {
+		t0 := time.Now()
+		f()
+		elapsed := time.Since(t0)
+		l.recordsLock.Lock()
+		defer l.recordsLock.Unlock()
+		tagString := fmt.Sprintf("[%s MEASURE-RECORD]", tag)
+		s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
+		l.logger.Println(s)
+		if stats, ok := l.records[tag]; ok {
+			l.records[tag] = append(stats, toMillis(elapsed))
+		} else {
+			l.records[tag] = []float64{toMillis(elapsed)}
+		}
+	}
+}
+
+func (l *Ledge) MeasureRecordAbove(tag string, above time.Duration, f func()) {
+	if l.stats.IsSet() && globalStats.IsSet() {
+		t0 := time.Now()
+		f()
+		elapsed := time.Since(t0)
+		l.recordsLock.Lock()
+		defer l.recordsLock.Unlock()
+		if elapsed > above {
+			tagString := fmt.Sprintf("[%s MEASURE-RECORD-ABOVE]", tag)
+			s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
+			l.logger.Println(s)
 			if stats, ok := l.records[tag]; ok {
 				l.records[tag] = append(stats, toMillis(elapsed))
 			} else {
