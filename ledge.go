@@ -88,6 +88,12 @@ func (l *Ledge) Panic(format string, v ...interface{}) {
 	l.logger.Panicln(s)
 }
 
+func (l *Ledge) Check(err error, format string, v ...interface{}) {
+	if err != nil {
+		l.Panic(format, v...)
+	}
+}
+
 func toMillis(d time.Duration) float64 {
 	return d.Seconds() * 1000.0
 }
