@@ -12,7 +12,7 @@ func main() {
 	// This will produce prefix "[juicebox A]"
 	log := ledge.New("juicebox", "A")
 	// This will always print out (all to stderr)
-	log.Always("Test %d", 1)
+	log.Print("Test %d", 1)
 	// Debugging is off by default
 	log.Debug("Don't show me %d", 1)
 	// Turn it on
@@ -30,15 +30,15 @@ func main() {
 	// Turn stats on
 	log.StatsOn()
 	// Measure one function and print out the results
-	log.Measure("one-off", func() {
+	log.Time("one-off", func() {
 		time.Sleep(13 * time.Millisecond)
 	})
 	// Measure one function and if it takes longer than 13ms, print out
-	log.MeasureAbove("dont-show", 13*time.Millisecond, func() {
+	log.TimeAbove("dont-show", 13*time.Millisecond, func() {
 		time.Sleep(10 * time.Millisecond)
 	})
 	// Won't print
-	log.MeasureAbove("show", 13*time.Millisecond, func() {
+	log.TimeAbove("show", 13*time.Millisecond, func() {
 		time.Sleep(15 * time.Millisecond)
 	})
 	// We can also save times for later based on a tag

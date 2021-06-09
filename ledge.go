@@ -70,7 +70,7 @@ func (l *Ledge) StatsOn() {
 	l.stats.Set()
 }
 
-func (l *Ledge) Always(format string, v ...interface{}) {
+func (l *Ledge) Print(format string, v ...interface{}) {
 	l.logger.Println(fmt.Sprintf(format, v...))
 }
 
@@ -172,7 +172,7 @@ func (l *Ledge) Record(tag string, f func()) {
 	}
 }
 
-func (l *Ledge) RecordIfAbove(tag string, above time.Duration, f func()) {
+func (l *Ledge) RecordAbove(tag string, above time.Duration, f func()) {
 	if l.stats.IsSet() && globalStats.IsSet() {
 		t0 := time.Now()
 		f()
@@ -207,7 +207,7 @@ func (l *Ledge) RecordPrint(tag string, f func()) {
 	}
 }
 
-func (l *Ledge) RecordPrintIfAbove(tag string, above time.Duration, f func()) {
+func (l *Ledge) RecordPrintAbove(tag string, above time.Duration, f func()) {
 	if l.stats.IsSet() && globalStats.IsSet() {
 		t0 := time.Now()
 		f()
