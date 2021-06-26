@@ -32,7 +32,7 @@ func New(prefixComponents ...string) *Ledge {
 	return &Ledge{
 		records:     make(map[string][]float64),
 		recordsLock: &sync.RWMutex{},
-		logger:      log.New(os.Stderr, fmt.Sprintf("%s", Green(prefix)), log.Lmsgprefix|log.Lmicroseconds),
+		logger:      log.New(os.Stdout, fmt.Sprintf("%s", Green(prefix)), log.Lmsgprefix|log.Lmicroseconds),
 		debug:       abool.NewBool(false),
 		stats:       abool.NewBool(false),
 	}
