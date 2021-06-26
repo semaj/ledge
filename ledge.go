@@ -32,7 +32,7 @@ func New(prefixComponents ...string) *Ledge {
 	return &Ledge{
 		records:     make(map[string][]float64),
 		recordsLock: &sync.RWMutex{},
-		logger:      log.New(os.Stdout, fmt.Sprintf("%s", Green(prefix)), log.Lmsgprefix|log.Lmicroseconds),
+		logger:      log.New(os.Stderr, fmt.Sprintf("%s", Green(prefix)), log.Lmsgprefix|log.Lmicroseconds),
 		debug:       abool.NewBool(false),
 		stats:       abool.NewBool(false),
 	}
@@ -105,9 +105,9 @@ func toMillis(d time.Duration) float64 {
 }
 
 func (l *Ledge) Time(tag string, f func()) {
+	t0 := time.Now()
+	f()
 	if l.stats.IsSet() && globalStats.IsSet() {
-		t0 := time.Now()
-		f()
 		elapsed := time.Since(t0)
 		tagString := fmt.Sprintf("[%s TIME]", tag)
 		s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
@@ -116,9 +116,9 @@ func (l *Ledge) Time(tag string, f func()) {
 }
 
 func (l *Ledge) TimeAbove(tag string, above time.Duration, f func()) {
+	t0 := time.Now()
+	f()
 	if l.stats.IsSet() && globalStats.IsSet() {
-		t0 := time.Now()
-		f()
 		elapsed := time.Since(t0)
 		if elapsed > above {
 			tagString := fmt.Sprintf("[%s TIME-ABOVE]", tag)
@@ -129,9 +129,9 @@ func (l *Ledge) TimeAbove(tag string, above time.Duration, f func()) {
 }
 
 func (l *Ledge) RecordThenPrintIfMax(tag string, f func()) {
+	t0 := time.Now()
+	f()
 	if l.stats.IsSet() && globalStats.IsSet() {
-		t0 := time.Now()
-		f()
 		elapsed := time.Since(t0)
 		elapsedMillis := toMillis(elapsed)
 		l.recordsLock.RLock()
@@ -158,9 +158,9 @@ func (l *Ledge) RecordThenPrintIfMax(tag string, f func()) {
 }
 
 func (l *Ledge) Record(tag string, f func()) {
+	t0 := time.Now()
+	f()
 	if l.stats.IsSet() && globalStats.IsSet() {
-		t0 := time.Now()
-		f()
 		elapsed := time.Since(t0)
 		l.recordsLock.Lock()
 		defer l.recordsLock.Unlock()
@@ -173,9 +173,9 @@ func (l *Ledge) Record(tag string, f func()) {
 }
 
 func (l *Ledge) RecordAndPrint(tag string, f func()) {
+	t0 := time.Now()
+	f()
 	if l.stats.IsSet() && globalStats.IsSet() {
-		t0 := time.Now()
-		f()
 		elapsed := time.Since(t0)
 		l.recordsLock.Lock()
 		defer l.recordsLock.Unlock()
