@@ -134,8 +134,8 @@ func (l *Ledge) RecordThenPrintIfMax(tag string, f func()) {
 	if l.stats.IsSet() && globalStats.IsSet() {
 		elapsed := time.Since(t0)
 		elapsedMillis := toMillis(elapsed)
-		l.recordsLock.RLock()
-		defer l.recordsLock.RUnlock()
+		l.recordsLock.Lock()
+		defer l.recordsLock.Unlock()
 		if records, ok := l.records[tag]; ok {
 			if len(records) > 0 {
 				r, e := stats.Max(records)
