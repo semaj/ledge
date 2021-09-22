@@ -16,13 +16,11 @@ import (
 type Ledge struct {
 	records     map[string][]float64
 	recordsLock *sync.RWMutex
-	logger      *log.Logger
+	stdout      *log.Logger
+	stderr      *log.Logger
 	debug       *abool.AtomicBool
 	stats       *abool.AtomicBool
 }
-
-var globalDebug = *abool.NewBool(true)
-var globalStats = *abool.NewBool(true)
 
 func New(prefixComponents ...string) *Ledge {
 	prefix := fmt.Sprintf("[%s] ", strings.Join(prefixComponents, " "))
@@ -32,26 +30,11 @@ func New(prefixComponents ...string) *Ledge {
 	return &Ledge{
 		records:     make(map[string][]float64),
 		recordsLock: &sync.RWMutex{},
-		logger:      log.New(os.Stderr, fmt.Sprintf("%s", Green(prefix)), log.Lmsgprefix|log.Lmicroseconds),
+		stdout:      log.New(os.Stdout, fmt.Sprintf("%s", Green(prefix)), log.Lmsgprefix|log.Lmicroseconds),
+		stderr:      log.New(os.Stderr, fmt.Sprintf("%s", BrightRed(prefix)), log.Lmsgprefix|log.Lmicroseconds),
 		debug:       abool.NewBool(false),
 		stats:       abool.NewBool(false),
 	}
-}
-
-func DebugOn() {
-	globalDebug.Set()
-}
-
-func DebugOff() {
-	globalDebug.UnSet()
-}
-
-func StatsOn() {
-	globalStats.Set()
-}
-
-func StatsOff() {
-	globalStats.UnSet()
 }
 
 func (l *Ledge) DebugOff() {
@@ -70,33 +53,52 @@ func (l *Ledge) StatsOn() {
 	l.stats.Set()
 }
 
-func (l *Ledge) Print(format string, v ...interface{}) {
-	l.logger.Println(fmt.Sprintf(format, v...))
+func (l *Ledge) Println(v ...interface{}) {
+	l.stdout.Println(v...)
 }
 
-func (l *Ledge) Debug(format string, v ...interface{}) {
-	if l.debug.IsSet() && globalDebug.IsSet() {
+func (l *Ledge) Printf(format string, v ...interface{}) {
+	l.stdout.Printf(format, v...)
+}
+
+func (l *Ledge) Debugf(format string, v ...interface{}) {
+	if l.debug.IsSet() {
 		formatString := fmt.Sprintf("%s %s", Cyan("[DEBUG]"), format)
-		s := fmt.Sprintf(formatString, v...)
-		l.logger.Println(s)
+		l.stderr.Printf(formatString, v...)
 	}
 }
 
-func (l *Ledge) Panic(format string, v ...interface{}) {
+func (l *Ledge) Debugln(v ...interface{}) {
+	if l.debug.IsSet() {
+		l.stderr.Println(append([]interface{}{Cyan("[DEBUG]")}, v...)...)
+	}
+}
+
+func (l *Ledge) Panicf(format string, v ...interface{}) {
 	formatString := fmt.Sprintf("%s %s", Red("[PANIC]"), format)
-	s := fmt.Sprintf(formatString, v...)
-	l.logger.Panicln(s)
+	l.stderr.Panicf(formatString, v...)
+}
+
+func (l *Ledge) Panicln(v ...interface{}) {
+	l.stderr.Panicln(append([]interface{}{Red("[PANIC]")}, v...)...)
 }
 
 func (l *Ledge) Check(err error) {
 	if err != nil {
-		l.Panic(fmt.Sprintf("%v", err))
+		l.Panicf("%v", err)
 	}
 }
 
-func (l *Ledge) CheckPrint(err error, format string, v ...interface{}) {
+func (l *Ledge) CheckPrintf(err error, format string, v ...interface{}) {
 	if err != nil {
-		l.Panic(format, v...)
+		l.Panicf(format, v...)
+	}
+}
+
+func (l *Ledge) CheckPrintln(err error, v ...interface{}) {
+	if err != nil {
+		v = append(v, err)
+		l.Panicln(v)
 	}
 }
 
@@ -107,60 +109,30 @@ func toMillis(d time.Duration) float64 {
 func (l *Ledge) Time(tag string, f func()) {
 	t0 := time.Now()
 	f()
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		elapsed := time.Since(t0)
-		tagString := fmt.Sprintf("[%s TIME]", tag)
-		s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[TIME %s]", tag)
+		l.stdout.Printf("%s %s", Yellow(tagString), elapsed)
 	}
 }
 
 func (l *Ledge) TimeAbove(tag string, above time.Duration, f func()) {
 	t0 := time.Now()
 	f()
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		elapsed := time.Since(t0)
 		if elapsed > above {
-			tagString := fmt.Sprintf("[%s TIME-ABOVE]", tag)
+			tagString := fmt.Sprintf("[TIME-ABOVE %s]", tag)
 			s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
-			l.logger.Println(s)
+			l.stdout.Println(s)
 		}
-	}
-}
-
-func (l *Ledge) RecordThenPrintIfMax(tag string, f func()) {
-	t0 := time.Now()
-	f()
-	if l.stats.IsSet() && globalStats.IsSet() {
-		elapsed := time.Since(t0)
-		elapsedMillis := toMillis(elapsed)
-		l.recordsLock.Lock()
-		defer l.recordsLock.Unlock()
-		if records, ok := l.records[tag]; ok {
-			if len(records) > 0 {
-				r, e := stats.Max(records)
-				if e != nil {
-					panic(e)
-				}
-				if elapsedMillis <= r {
-					l.records[tag] = append(records, elapsedMillis)
-					return
-				}
-			}
-			l.records[tag] = append(records, elapsedMillis)
-		} else {
-			l.records[tag] = []float64{elapsedMillis}
-		}
-		tagString := fmt.Sprintf("[%s RECORD-ABOVE-MAX]", tag)
-		s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
-		l.logger.Println(s)
 	}
 }
 
 func (l *Ledge) Record(tag string, f func()) {
 	t0 := time.Now()
 	f()
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		elapsed := time.Since(t0)
 		l.recordsLock.Lock()
 		defer l.recordsLock.Unlock()
@@ -175,13 +147,13 @@ func (l *Ledge) Record(tag string, f func()) {
 func (l *Ledge) RecordAndPrint(tag string, f func()) {
 	t0 := time.Now()
 	f()
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		elapsed := time.Since(t0)
 		l.recordsLock.Lock()
 		defer l.recordsLock.Unlock()
-		tagString := fmt.Sprintf("[%s RECORD]", tag)
+		tagString := fmt.Sprintf("[RECORD %s]", tag)
 		s := fmt.Sprintf("%s %s", Yellow(tagString), elapsed)
-		l.logger.Println(s)
+		l.stdout.Println(s)
 		if records, ok := l.records[tag]; ok {
 			l.records[tag] = append(records, toMillis(elapsed))
 		} else {
@@ -207,18 +179,17 @@ func (l *Ledge) Stats(tag string) {
 }
 
 func (l *Ledge) Count(tag string) {
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		l.recordsLock.RLock()
 		records := l.records[tag]
 		l.recordsLock.RUnlock()
-		tagString := fmt.Sprintf("[%s COUNT]", tag)
-		s := fmt.Sprintf("%s %d", Magenta(tagString), len(records))
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[COUNT %s]", tag)
+		l.stdout.Printf("%s %d", Magenta(tagString), len(records))
 	}
 }
 
 func (l *Ledge) Mean(tag string) {
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		l.recordsLock.RLock()
 		records, ok := l.records[tag]
 		l.recordsLock.RUnlock()
@@ -229,14 +200,13 @@ func (l *Ledge) Mean(tag string) {
 		if e != nil {
 			panic(e)
 		}
-		tagString := fmt.Sprintf("[%s MEAN]", tag)
-		s := fmt.Sprintf("%s %f", Magenta(tagString), r)
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[MEAN %s]", tag)
+		l.stdout.Printf("%s %f", Magenta(tagString), r)
 	}
 }
 
 func (l *Ledge) Median(tag string) {
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		l.recordsLock.RLock()
 		records, ok := l.records[tag]
 		l.recordsLock.RUnlock()
@@ -247,14 +217,13 @@ func (l *Ledge) Median(tag string) {
 		if e != nil {
 			panic(e)
 		}
-		tagString := fmt.Sprintf("[%s MEDIAN]", tag)
-		s := fmt.Sprintf("%s %f", Magenta(tagString), r)
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[MEDIAN %s]", tag)
+		l.stdout.Printf("%s %f", Magenta(tagString), r)
 	}
 }
 
 func (l *Ledge) Perc(tag string, perc float64) {
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		l.recordsLock.RLock()
 		records, ok := l.records[tag]
 		l.recordsLock.RUnlock()
@@ -265,14 +234,13 @@ func (l *Ledge) Perc(tag string, perc float64) {
 		if e != nil {
 			panic(e)
 		}
-		tagString := fmt.Sprintf("[%s PERC-%d]", tag, uint(perc))
-		s := fmt.Sprintf("%s %f", Magenta(tagString), r)
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[PERC-%d %s]", uint(perc), tag)
+		l.stdout.Printf("%s %f", Magenta(tagString), r)
 	}
 }
 
 func (l *Ledge) Min(tag string) {
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		l.recordsLock.RLock()
 		records, ok := l.records[tag]
 		l.recordsLock.RUnlock()
@@ -283,14 +251,13 @@ func (l *Ledge) Min(tag string) {
 		if e != nil {
 			panic(e)
 		}
-		tagString := fmt.Sprintf("[%s MIN]", tag)
-		s := fmt.Sprintf("%s %f", Magenta(tagString), r)
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[MIN %s]", tag)
+		l.stdout.Printf("%s %f", Magenta(tagString), r)
 	}
 }
 
 func (l *Ledge) Max(tag string) {
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		l.recordsLock.RLock()
 		records, ok := l.records[tag]
 		l.recordsLock.RUnlock()
@@ -301,14 +268,13 @@ func (l *Ledge) Max(tag string) {
 		if e != nil {
 			panic(e)
 		}
-		tagString := fmt.Sprintf("[%s MAX]", tag)
-		s := fmt.Sprintf("%s %f", Magenta(tagString), r)
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[MAX %s]", tag)
+		l.stdout.Printf("%s %f", Magenta(tagString), r)
 	}
 }
 
 func (l *Ledge) Variance(tag string) {
-	if l.stats.IsSet() && globalStats.IsSet() {
+	if l.stats.IsSet() {
 		l.recordsLock.RLock()
 		records, ok := l.records[tag]
 		l.recordsLock.RUnlock()
@@ -319,8 +285,7 @@ func (l *Ledge) Variance(tag string) {
 		if e != nil {
 			panic(e)
 		}
-		tagString := fmt.Sprintf("[%s VARIANCE]", tag)
-		s := fmt.Sprintf("%s %f", Magenta(tagString), r)
-		l.logger.Println(s)
+		tagString := fmt.Sprintf("[VARIANCE %s]", tag)
+		l.stdout.Printf("%s %f", Magenta(tagString), r)
 	}
 }

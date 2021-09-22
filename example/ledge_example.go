@@ -11,20 +11,17 @@ func main() {
 	// Creates a new book-keeper. Takes any number of strings.
 	// This will produce prefix "[juicebox A]"
 	log := ledge.New("juicebox", "A")
-	// This will always print out (all to stderr)
-	log.Print("Test %d", 1)
+	// This will always print out
+	log.Printf("Test %d", 1)
+	log.Println("Test", 1)
 	// Debugging is off by default
-	log.Debug("Don't show me %d", 1)
+	log.Debugf("Don't show me %d", 1)
+	log.Debugln("Don't show me", 1)
 	// Turn it on
 	log.DebugOn()
-	log.Debug("Show me %d", 1)
+	log.Debugf("Show me %d", 1)
+	log.Debugln("Show me", 1)
 	// We can globally turn off debugging for all ledges
-	ledge.DebugOff()
-	log.Debug("Don't show me %d", 1)
-	// Turn global back on
-	ledge.DebugOn()
-	log.Debug("Show me %d", 2)
-	// Stats is also off by default, these two lines will do nothing
 	log.Record("tag1", func() {})
 	log.Count("tag1")
 	// Turn stats on
@@ -72,7 +69,7 @@ func main() {
 	log.Stats("tag1")
 	fmt.Println("Should see just panic:")
 	// Turning stats off means no record will get recorded or printed
-	ledge.StatsOff()
+	log.StatsOff()
 	for i := 0; i < 50; i++ {
 		log.Record("tag1", func() {
 			time.Sleep(2 * time.Millisecond)
@@ -80,5 +77,5 @@ func main() {
 	}
 	log.Stats("tag1")
 	// Our panic
-	log.Panic("PANICKING %f", 0.5)
+	log.Panicf("PANICKING %f", 0.5)
 }
